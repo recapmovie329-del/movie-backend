@@ -5,20 +5,32 @@ require("dotenv").config();
 const app = express();
 app.use(express.json());
 
-// Firebase Admin SDK ကို JSON စာသားတိုက်ရိုက်ဖြင့် ချိတ်ဆက်ခြင်း
+let initializationError = null;
+
+// Firebase Admin SDK ချိတ်ဆက်ခြင်းနှင့် Error ဖမ်းခြင်း
 try {
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-        // String ဖြစ်နေတဲ့ JSON စာသားကို Object အဖြစ် ပြန်ပြောင်းခြင်း
-        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+        let configStr = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
+        
+        // 🟢 ရှေ့နောက် မျက်တောင်ဖွင့်/ပိတ် ပါနေလျှင် ဖယ်ရှားရန်
+        if (configStr.startsWith('"') && configStr.endsWith('"')) {
+            configStr = configStr.slice(1, -1);
+        }
+
+        // 🟢 \n ပြဿနာကို ကြိုတင် Fix ပေးခြင်း
+        configStr = configStr.replace(/\\n/g, '\n');
+
+        const serviceAccount = JSON.parse(configStr);
         
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
         });
         console.log("Firebase Admin Initialized Successfully!");
     } else {
-        console.error("FIREBASE_SERVICE_ACCOUNT variable is missing!");
+        initializationError = "FIREBASE_SERVICE_ACCOUNT variable is missing from Render Environment!";
     }
 } catch (error) {
+    initializationError = `${error.message} | Stack: ${error.stack}`;
     console.error("Firebase Initialization Error:", error);
 }
 
@@ -27,22 +39,15 @@ app.get("/", (req, res) => {
 });
 
 app.get("/api/health", (req, res) => {
-    try {
-        res.json({
-            success: true,
-            message: "Server OK",
-            firebase: (admin.apps && admin.apps.length > 0) ? "Connected" : "Disconnected",
-            debug: {
-                hasServiceAccountConfig: !!process.env.FIREBASE_SERVICE_ACCOUNT
-            }
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Health Check Error",
-            error: error.message
-        });
-    }
+    res.json({
+        success: true,
+        message: "Server OK",
+        firebase: (admin.apps && admin.apps.length > 0) ? "Connected" : "Disconnected",
+        errorLogs: initializationError, // 🟢 ဒီနေရာကနေ ဘာကြောင့် Fail ဖြစ်လဲဆိုတာ တန်းပြပေးပါလိမ့်မယ်
+        debug: {
+            hasServiceAccountConfig: !!process.env.FIREBASE_SERVICE_ACCOUNT
+        }
+    });
 });
 
 const PORT = process.env.PORT || 3000;
