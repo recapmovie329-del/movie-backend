@@ -8,6 +8,7 @@ app.use(express.json());
 let initializationError = null;
 
 try {
+    // Render (Production) ပေါ်တွင် Service Account စာသားရှိမရှိ တိုက်ရိုက်စစ်ဆေးခြင်း
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
         let configStr = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
         
@@ -20,14 +21,18 @@ try {
 
         const serviceAccount = JSON.parse(configStr);
         
-        // 🟢 Firebase ကို အခြေခံအကျဆုံးနှင့် အလုံခြုံဆုံးပုံစံဖြင့် Initialize လုပ်ခြင်း
+        // အစ်ကိုပေးထားသည့် လမ်းကြောင်းအတိုင်း ရိုးရှင်းစွာ ချိတ်ဆက်ခြင်း
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
         });
         
-        console.log("Firebase Admin Initialized Successfully!");
+        console.log("Firebase Admin Initialized Successfully via Service Account!");
     } else {
-        initializationError = "FIREBASE_SERVICE_ACCOUNT variable is missing!";
+        // Local Dev အတွက် အစ်ကိုသုံးချင်သည့် ပုံစံအတိုင်း ထားပေးခြင်း
+        admin.initializeApp({
+            credential: admin.credential.applicationDefault()
+        });
+        console.log("Firebase Admin Initialized via Application Default (Local).");
     }
 } catch (error) {
     initializationError = error.message;
