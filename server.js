@@ -7,18 +7,19 @@ app.use(express.json());
 
 let initializationError = null;
 
-// Firebase Admin SDK ချိတ်ဆက်ခြင်းနှင့် Error ဖမ်းခြင်း
 try {
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
         let configStr = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
         
+        // 🟢 အရေးကြီးဆုံးအပိုင်း- Render က ပေးလိုက်တဲ့ စာကြောင်းအောက်ဆင်းတာတွေ၊ Space အပိုတွေကို အကုန်လုံး ဖယ်ထုတ်ပစ်ခြင်း
+        configStr = configStr
+            .replace(/\r?\n|\r/g, " ") // Enter ခေါက်ထားသမျှကို Space အဖြစ်ပြောင်း
+            .replace(/\s+/g, " ");     // Space အပိုတွေကို တစ်ချက်တည်းဖြစ်အောင် ညှိ
+
         // 🟢 ရှေ့နောက် မျက်တောင်ဖွင့်/ပိတ် ပါနေလျှင် ဖယ်ရှားရန်
         if (configStr.startsWith('"') && configStr.endsWith('"')) {
             configStr = configStr.slice(1, -1);
         }
-
-        // 🟢 \n ပြဿနာကို ကြိုတင် Fix ပေးခြင်း
-        configStr = configStr.replace(/\\n/g, '\n');
 
         const serviceAccount = JSON.parse(configStr);
         
@@ -27,7 +28,7 @@ try {
         });
         console.log("Firebase Admin Initialized Successfully!");
     } else {
-        initializationError = "FIREBASE_SERVICE_ACCOUNT variable is missing from Render Environment!";
+        initializationError = "FIREBASE_SERVICE_ACCOUNT variable is missing!";
     }
 } catch (error) {
     initializationError = `${error.message} | Stack: ${error.stack}`;
@@ -43,7 +44,7 @@ app.get("/api/health", (req, res) => {
         success: true,
         message: "Server OK",
         firebase: (admin.apps && admin.apps.length > 0) ? "Connected" : "Disconnected",
-        errorLogs: initializationError, // 🟢 ဒီနေရာကနေ ဘာကြောင့် Fail ဖြစ်လဲဆိုတာ တန်းပြပေးပါလိမ့်မယ်
+        errorLogs: initializationError,
         debug: {
             hasServiceAccountConfig: !!process.env.FIREBASE_SERVICE_ACCOUNT
         }
