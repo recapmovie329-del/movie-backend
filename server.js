@@ -6,13 +6,13 @@ const app = express();
 app.use(express.json());
 
 let initializationError = null;
+let db = null; // 🟢 Firestore Database ပုံး
 
 try {
-    // Render (Production) ပေါ်တွင် Service Account စာသားရှိမရှိ တိုက်ရိုက်စစ်ဆေးခြင်း
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
         let configStr = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
         
-        // Render ၏ စာကြောင်းအောက်ဆင်းသမျှ အမှိုက်များကို တစ်ကြောင်းတည်းဖြစ်အောင် ညှိခြင်း
+        // Render ၏ စာကြောင်းအောက်ဆင်းသမျှကို ညှိခြင်း
         configStr = configStr.replace(/\r?\n|\r/g, " ").replace(/\s+/g, " ");
 
         if (configStr.startsWith('"') && configStr.endsWith('"')) {
@@ -21,17 +21,18 @@ try {
 
         const serviceAccount = JSON.parse(configStr);
         
-        // အစ်ကိုပေးထားသည့် လမ်းကြောင်းအတိုင်း ရိုးရှင်းစွာ ချိတ်ဆက်ခြင်း
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
         });
         
-        console.log("Firebase Admin Initialized Successfully via Service Account!");
+        // 🟢 Firebase ချိတ်ဆက်မှု အောင်မြင်ရင် Firestore DB ကို ယူသုံးမည်
+        db = admin.firestore();
+        console.log("Firebase Admin & Firestore Initialized Successfully!");
     } else {
-        // Local Dev အတွက် အစ်ကိုသုံးချင်သည့် ပုံစံအတိုင်း ထားပေးခြင်း
         admin.initializeApp({
             credential: admin.credential.applicationDefault()
         });
+        db = admin.firestore();
         console.log("Firebase Admin Initialized via Application Default (Local).");
     }
 } catch (error) {
@@ -39,10 +40,47 @@ try {
     console.error("Firebase Initialization Error:", error);
 }
 
+// Base Route
 app.get("/", (req, res) => {
     res.send("Movie Backend Running with Firebase Admin!");
 });
 
+// 🎬 1. ရုပ်ရှင်ဒေတာအားလုံးကို Firestore ထဲမှ ဆွဲထုတ်မည့် API Route (GET)
+app.get("/api/movies", async (req, res) => {
+    try {
+        if (!db) {
+            return res.status(500).json({ success: false, message: "Database not initialized" });
+        }
+
+        // Firestore ထဲက 'movies' ဆိုတဲ့ Collection ကို လှမ်းခေါ်ခြင်း
+        const moviesSnapshot = await db.collection("movies").get();
+        const moviesList = [];
+
+        // ရလာတဲ့ ဒေတာတွေကို Array ထဲ စနစ်တကျ ထည့်ခြင်း
+        moviesSnapshot.forEach((doc) => {
+            moviesList.push({
+                id: doc.id,         // Document ရဲ့ ID (Firebase က ပေးတာ)
+                ...doc.data()       // အထဲက Movie Data များ (title, year, rating စသည်)
+            });
+        });
+
+        // Client ဘက်ကို ဒေတာ ပြန်ပေးပို့ခြင်း
+        res.json({
+            success: true,
+            count: moviesList.length,
+            data: moviesList
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch movies",
+            error: error.message
+        });
+    }
+});
+
+// Health Check Route
 app.get("/api/health", (req, res) => {
     let isConnected = false;
     try {
