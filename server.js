@@ -11,27 +11,26 @@ try {
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
         let configStr = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
         
-        // 🟢 အရေးကြီးဆုံးအပိုင်း- Render က ပေးလိုက်တဲ့ စာကြောင်းအောက်ဆင်းတာတွေ၊ Space အပိုတွေကို အကုန်လုံး ဖယ်ထုတ်ပစ်ခြင်း
-        configStr = configStr
-            .replace(/\r?\n|\r/g, " ") // Enter ခေါက်ထားသမျှကို Space အဖြစ်ပြောင်း
-            .replace(/\s+/g, " ");     // Space အပိုတွေကို တစ်ချက်တည်းဖြစ်အောင် ညှိ
+        // Render ရဲ့ Enter ခေါက်ထားသမျှ စာကြောင်းအမှိုက်များကို ရှင်းလင်းခြင်း
+        configStr = configStr.replace(/\r?\n|\r/g, " ").replace(/\s+/g, " ");
 
-        // 🟢 ရှေ့နောက် မျက်တောင်ဖွင့်/ပိတ် ပါနေလျှင် ဖယ်ရှားရန်
         if (configStr.startsWith('"') && configStr.endsWith('"')) {
             configStr = configStr.slice(1, -1);
         }
 
         const serviceAccount = JSON.parse(configStr);
         
+        // 🟢 Error လုံးဝမတက်နိုင်တော့မည့် Firebase Standard Initialization ပုံစံ
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
         });
+        
         console.log("Firebase Admin Initialized Successfully!");
     } else {
         initializationError = "FIREBASE_SERVICE_ACCOUNT variable is missing!";
     }
 } catch (error) {
-    initializationError = `${error.message} | Stack: ${error.stack}`;
+    initializationError = `${error.message}`;
     console.error("Firebase Initialization Error:", error);
 }
 
@@ -40,10 +39,20 @@ app.get("/", (req, res) => {
 });
 
 app.get("/api/health", (req, res) => {
+    // Firebase စနစ် ကောင်းမွန်စွာ အလုပ်လုပ်၊ မလုပ် စစ်ဆေးခြင်း
+    let isConnected = false;
+    try {
+        if (admin.apps && admin.apps.length > 0) {
+            isConnected = true;
+        }
+    } catch (e) {
+        isConnected = false;
+    }
+
     res.json({
         success: true,
         message: "Server OK",
-        firebase: (admin.apps && admin.apps.length > 0) ? "Connected" : "Disconnected",
+        firebase: isConnected ? "Connected" : "Disconnected",
         errorLogs: initializationError,
         debug: {
             hasServiceAccountConfig: !!process.env.FIREBASE_SERVICE_ACCOUNT
