@@ -11,7 +11,7 @@ try {
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
         let configStr = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
         
-        // Render ရဲ့ Enter ခေါက်ထားသမျှ စာကြောင်းအမှိုက်များကို ရှင်းလင်းခြင်း
+        // Render ၏ စာကြောင်းအောက်ဆင်းသမျှ အမှိုက်များကို တစ်ကြောင်းတည်းဖြစ်အောင် ညှိခြင်း
         configStr = configStr.replace(/\r?\n|\r/g, " ").replace(/\s+/g, " ");
 
         if (configStr.startsWith('"') && configStr.endsWith('"')) {
@@ -20,7 +20,7 @@ try {
 
         const serviceAccount = JSON.parse(configStr);
         
-        // 🟢 Error လုံးဝမတက်နိုင်တော့မည့် Firebase Standard Initialization ပုံစံ
+        // 🟢 Firebase ကို အခြေခံအကျဆုံးနှင့် အလုံခြုံဆုံးပုံစံဖြင့် Initialize လုပ်ခြင်း
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
         });
@@ -30,7 +30,7 @@ try {
         initializationError = "FIREBASE_SERVICE_ACCOUNT variable is missing!";
     }
 } catch (error) {
-    initializationError = `${error.message}`;
+    initializationError = error.message;
     console.error("Firebase Initialization Error:", error);
 }
 
@@ -39,7 +39,6 @@ app.get("/", (req, res) => {
 });
 
 app.get("/api/health", (req, res) => {
-    // Firebase စနစ် ကောင်းမွန်စွာ အလုပ်လုပ်၊ မလုပ် စစ်ဆေးခြင်း
     let isConnected = false;
     try {
         if (admin.apps && admin.apps.length > 0) {
