@@ -5,31 +5,18 @@ require("dotenv").config();
 const app = express();
 app.use(express.json());
 
-// 🟢 Private Key ထဲက \n ပြဿနာကို ပုံစံနှစ်မျိုးလုံး စစ်ဆေးပြီး ပြင်ဆင်ပေးသည့် Function
-const formatPrivateKey = (key) => {
-    if (!key) return undefined;
-    // အကယ်၍ ရှေ့နောက် မျက်တောင်ဖွင့်/ပိတ် ပါလာခဲ့ရင် ဖယ်ရှားပစ်ရန်
-    let formattedKey = key.trim().replace(/^"/, "").replace(/"$/, "");
-    // \n စာသားတွေ ညပ်နေရင် တကယ် စာကြောင်းဆင်းတဲ့ အက္ခရာအဖြစ် ပြောင်းရန်
-    if (formattedKey.includes("\\n")) {
-        return formattedKey.replace(/\\n/g, '\n');
-    }
-    return formattedKey;
-};
-
-// Firebase Admin SDK စတင်ချိတ်ဆက်ခြင်း
+// Firebase Admin SDK ကို JSON စာသားတိုက်ရိုက်ဖြင့် ချိတ်ဆက်ခြင်း
 try {
-    if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+        // String ဖြစ်နေတဲ့ JSON စာသားကို Object အဖြစ် ပြန်ပြောင်းခြင်း
+        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+        
         admin.initializeApp({
-            credential: admin.credential.cert({
-                projectId: process.env.FIREBASE_PROJECT_ID,
-                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                privateKey: formatPrivateKey(process.env.FIREBASE_PRIVATE_KEY)
-            })
+            credential: admin.credential.cert(serviceAccount)
         });
         console.log("Firebase Admin Initialized Successfully!");
     } else {
-        console.error("Firebase Environment Variables are missing!");
+        console.error("FIREBASE_SERVICE_ACCOUNT variable is missing!");
     }
 } catch (error) {
     console.error("Firebase Initialization Error:", error);
@@ -45,11 +32,8 @@ app.get("/api/health", (req, res) => {
             success: true,
             message: "Server OK",
             firebase: (admin.apps && admin.apps.length > 0) ? "Connected" : "Disconnected",
-            // Debug စစ်ရန်အတွက် Variable တွေ ကောင်းကောင်း ဝင်၊ မဝင် စစ်ဆေးခြင်း
             debug: {
-                hasProjectId: !!process.env.FIREBASE_PROJECT_ID,
-                hasClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
-                hasPrivateKey: !!process.env.FIREBASE_PRIVATE_KEY
+                hasServiceAccountConfig: !!process.env.FIREBASE_SERVICE_ACCOUNT
             }
         });
     } catch (error) {
