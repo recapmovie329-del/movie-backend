@@ -1,5 +1,9 @@
 const ffmpeg = require("fluent-ffmpeg");
+const ffmpegInstaller = require("@ffmpeg-installer/ffmpeg");
 const path = require("path");
+
+// 🟢 Render/Linux ပေါ်တွင် FFmpeg Binary လမ်းကြောင်းကို အလိုအလျောက် ရှာဖွေသတ်မှတ်ခြင်း
+ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 
 // ဗီဒီယိုပေါ်တွင် Watermark/Logo တင်ပေးမည့် Service Function
 const addWatermark = (inputPath, logoPath, outputPath) => {
